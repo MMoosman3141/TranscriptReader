@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>TranscriptReader</name>
+    </assembly>
+    <members>
+        <member name="T:TranscriptReader.Program">
+            <summary>
+            This application takes a transcript json file and produces 3 files from it:
+            1 - transcript.txt.  This file contains a human readable dialog from the transcription, indicating the Patron and Agent speaker for each turn.
+            2 - snippet.txt.  This file will contain a single exchange between the patron and the agent.  The selected exchange is the one with the best confidence for the 2 segments.
+            3 - worst.txt.  This file contains a list of words whith the 10 lowest confidence scores (note: This is the 10 lowest confidence scores, not the 10 worst words).
+            </summary>
+        </member>
+        <member name="M:TranscriptReader.Program.Main(System.String[])">
+            <summary>
+            This is the entry point of the application.
+            </summary>
+            <param name="args">A list of command line arguments.  In this case, 1 argument is required, and only 1, which must be the name of the json file containing the transcript.</param>
+        </member>
+        <member name="M:TranscriptReader.Program.WriteTranscriptAsync(System.String,System.Collections.Generic.List{TranscriptReader.SpeakerSegment})">
+            <summary>
+            This method writes the human readable transcript.
+            </summary>
+            <param name="filename">The name of the file which should be written.  If the file already exists it will be overwritten.  If the file is in use, an error will occur.</param>
+            <param name="segments">The list of ordered segments to be written to the file.</param>
+            <returns>A the Task object performing the action.</returns>
+        </member>
+        <member name="M:TranscriptReader.Program.WriteSnippetAsync(System.String,System.Collections.Generic.List{TranscriptReader.SpeakerSegment})">
+            <summary>
+            This method writes the best pair of segments, as determined by their averaged, and confidence scores.
+            </summary>
+            <param name="filename">The name of the file which should be written.  If the file already exists it will be overwritten.  If the file is in use, an error will occur.</param>
+            <param name="segments">The list of ordered segments within which the best pair will be found and written to the file.</param>
+            <returns>A the Task object performing the action.</returns>
+        </member>
+        <member name="M:TranscriptReader.Program.WriteWorstAsync(System.String,System.Collections.Generic.List{TranscriptReader.Transcript.WordInstanceObj})">
+            <summary>
+            This method writes the words for the worst 10 confidence scores to a file.
+            If multiple words are associated with a single score within this range, each of the words will be written out.
+            </summary>
+            <param name="filename">The name of the file which should be written.  If the file already exists it will be overwritten.  If the file is in use, an error will occur.</param>
+            <param name="words">The list of words to write to the file</param>
+            <returns>A the Task object performing the action.</returns>
+        </member>
+        <member name="T:TranscriptReader.SpeakerSegment">
+            <summary>
+            SpeakerSegment objects are meant to store a segment of speaker text assembled from individual WordInstanceObj items.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.SpeakerSegment.Channel">
+            <summary>
+            The channel the speaker was recorded on.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.SpeakerSegment.Confidence">
+            <summary>
+            The average confidence of all tokens that are part of the segment.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.SpeakerSegment.StartTime">
+            <summary>
+            The start time of the first token in the segment
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.SpeakerSegment.EndTime">
+            <summary>
+            The end time of the last token in the segment.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.SpeakerSegment.WordInstances">
+            <summary>
+            The word instances that make up the segment.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.SpeakerSegment.Item(System.Int32)">
+            <summary>
+            Indexer, allowing index value access to the words within the segment.
+            </summary>
+            <param name="i">The index of the word instance to retreive</param>
+            <returns>The word instance stored at index i</returns>
+        </member>
+        <member name="M:TranscriptReader.SpeakerSegment.TryAdd(TranscriptReader.Transcript.WordInstanceObj)">
+            <summary>
+            Attempts to add a WordInstanceObj to the segment.  If the wordInstance is the first instance being stored in the segment, it establishes the channel for the segment.
+            If the word instance is not the first instance stored, it will only be added if the channel matches the channel of previously added word instances.
+            As new word instances are added, the segment confidence, start time, and end time are adjusted.
+            </summary>
+            <param name="wordInstance">The WordInstanceObj to attempt to add</param>
+            <returns>true if the wordInstance is successfully added, false if the wordInstance cannot be added due to a channel conflict</returns>
+        </member>
+        <member name="M:TranscriptReader.SpeakerSegment.ToString">
+            <summary>
+            Override of the ToString method.
+            Creates a string representation of the wordInstances within the segment, prefixed as either "Patron: " or "Agent: " depending on the channel.
+            All word instances are lowercased.
+            </summary>
+            <returns>A string value representing the segment of text.</returns>
+        </member>
+        <member name="T:TranscriptReader.Transcript.ChannelObj">
+            <summary>
+            Channel object read from the transcript json
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.ChannelObj.Channel">
+            <summary>
+            The channel used when recroding the speaker.  Channel 0 will refer to the patron, and channel 1 the agent.
+            This is not the specification within the homework text though, which says the patron will be channel 0 and the client will be channel 1
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.ChannelObj.Words">
+            <summary>
+            A dictionary of words with the word Id as the Key, and the word text as the value.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.ChannelObj.WordInstances">
+            <summary>
+            Information for each word including time offsets, and confidence scores.
+            </summary>
+        </member>
+        <member name="T:TranscriptReader.Transcript.TranscriptObj">
+            <summary>
+            Transcript object read from the transcript josn.
+            Include method to create a new transcript object form a file, as well as methods to get segments and worst words.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.TranscriptObj.Channels">
+            <summary>
+            List of channel objects.  Generally speaking there should only be 1 or 2 channels for any given transcript.
+            </summary>
+        </member>
+        <member name="M:TranscriptReader.Transcript.TranscriptObj.Create(System.String)">
+            <summary>
+            The name of a transcript json file to be deserialized.
+            </summary>
+            <param name="filename">The name of a transcript json file to be deserialized</param>
+        </member>
+        <member name="M:TranscriptReader.Transcript.TranscriptObj.GetSegments">
+            <summary>
+            Method to retrieve the speaker segments from the transcript.
+            </summary>
+            <returns>A List of SpeakerSegment objects representing speaker turns in order</returns>
+        </member>
+        <member name="M:TranscriptReader.Transcript.TranscriptObj.GetWorstWords">
+            <summary>
+            Method to retrieve the words with the lowest confidence values.
+            </summary>
+            <returns>A list of WordInstance objects which have the worst confidence values</returns>
+        </member>
+        <member name="T:TranscriptReader.Transcript.WordInstanceObj">
+            <summary>
+            Represents word instances as read from the transcript file.
+            Includes additions of Text and Channel properties
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.WordInstanceObj.Text">
+            <summary>
+            The text of the word.  As this is not part of the wordInstance definition in the Json, this is ignored for serialization.
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.WordInstanceObj.Channel">
+            <summary>
+            The channel in which the speaker was recorded on
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.WordInstanceObj.Id">
+            <summary>
+            The Id of the word
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.WordInstanceObj.Score">
+            <summary>
+            The confidence score 0 - 100 of the word
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.WordInstanceObj.StartTime">
+            <summary>
+            Start time in milliseconds of the word instance
+            </summary>
+        </member>
+        <member name="P:TranscriptReader.Transcript.WordInstanceObj.EndTime">
+            <summary>
+            End time in milliseconds of the word instance.
+            </summary>
+        </member>
+    </members>
+</doc>
